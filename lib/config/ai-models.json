@@ -1,0 +1,23 @@
+{
+  "models": {
+    "primary": {
+      "provider": "openai",
+      "model": "gpt-4o",
+      "temperature": 0.3,
+      "maxTokens": 2000
+    },
+    "fallback": {
+      "provider": "openai",
+      "model": "gpt-3.5-turbo",
+      "temperature": 0.3,
+      "maxTokens": 1500
+    }
+  },
+  "prompts": {
+    "codeAnalysis": "You are an expert code reviewer...",
+    "bugDetection": "Focus on finding potential bugs...",
+    "performanceAnalysis": "Analyze for performance issues...",
+    "securityAudit": "Check for security vulnerabilities...",
+    "styleGuide": "Review code style and formatting..."
+  }
+}
