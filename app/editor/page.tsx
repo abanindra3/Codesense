@@ -1,14 +1,14 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Code2,
-  Play,
   Loader2,
   Bug,
   Zap,
@@ -19,11 +19,12 @@ import {
   XCircle,
   Copy,
   ArrowLeft,
-  Sparkles,
   Target,
+  Send,
+  FileText,
+  Clock,
 } from "lucide-react"
 import Link from "next/link"
-import Editor from "@monaco-editor/react"
 
 const languages = [
   { value: "javascript", label: "JavaScript" },
@@ -37,10 +38,28 @@ const languages = [
 ]
 
 const analysisTypes = [
-  { id: "bugs", label: "Bug Detection", icon: Bug, color: "text-red-400" },
-  { id: "performance", label: "Performance", icon: Zap, color: "text-yellow-400" },
-  { id: "security", label: "Security", icon: Shield, color: "text-green-400" },
-  { id: "style", label: "Style Guide", icon: Palette, color: "text-blue-400" },
+  {
+    id: "bugs",
+    label: "Bug Detection",
+    icon: Bug,
+    color: "text-red-400",
+    description: "Find potential bugs and errors",
+  },
+  {
+    id: "performance",
+    label: "Performance",
+    icon: Zap,
+    color: "text-yellow-400",
+    description: "Optimize speed and efficiency",
+  },
+  {
+    id: "security",
+    label: "Security",
+    icon: Shield,
+    color: "text-green-400",
+    description: "Detect security vulnerabilities",
+  },
+  { id: "style", label: "Style Guide", icon: Palette, color: "text-blue-400", description: "Improve code formatting" },
 ]
 
 const sampleCode = {
@@ -81,33 +100,12 @@ interface AnalysisResult {
 export default function EditorPage() {
   const [code, setCode] = useState(sampleCode.javascript)
   const [language, setLanguage] = useState("javascript")
-  const [selectedAnalysis, setSelectedAnalysis] = useState(["bugs", "performance", "security", "style"])
+  const [selectedAnalysis, setSelectedAnalysis] = useState(["bugs", "performance"])
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [results, setResults] = useState<AnalysisResult[]>([])
   const [analysisComplete, setAnalysisComplete] = useState(false)
-  const editorRef = useRef(null)
-
-  // Suppress "ResizeObserver loop completed with undelivered notifications" error
-  useEffect(() => {
-    const handler = (e: ErrorEvent) => {
-      if (
-        e.message === "ResizeObserver loop completed with undelivered notifications." ||
-        e.message === "ResizeObserver loop limit exceeded"
-      ) {
-        // Prevent the error from bubbling and breaking the app
-        e.stopImmediatePropagation()
-      }
-    }
-    window.addEventListener("error", handler)
-
-    // Some browsers (e.g. Chromium-based) dispatch a special event name
-    window.addEventListener("unhandledrejection", handler as any)
-
-    return () => {
-      window.removeEventListener("error", handler)
-      window.removeEventListener("unhandledrejection", handler as any)
-    }
-  }, [])
+  const [analysisStartTime, setAnalysisStartTime] = useState<Date | null>(null)
+  const [currentStep, setCurrentStep] = useState("")
 
   const handleLanguageChange = (newLanguage: string) => {
     setLanguage(newLanguage)
@@ -123,12 +121,22 @@ export default function EditorPage() {
   }
 
   const analyzeCode = async () => {
-    if (!code.trim()) return
+    if (!code.trim() || selectedAnalysis.length === 0) return
 
     setIsAnalyzing(true)
     setResults([])
+    setAnalysisComplete(false)
+    setAnalysisStartTime(new Date())
+    setCurrentStep("Initializing analysis...")
 
     try {
+      // Simulate analysis steps
+      setCurrentStep("Parsing code structure...")
+      await new Promise((resolve) => setTimeout(resolve, 800))
+
+      setCurrentStep("Running AI analysis...")
+      await new Promise((resolve) => setTimeout(resolve, 500))
+
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -139,40 +147,68 @@ export default function EditorPage() {
         }),
       })
 
+      setCurrentStep("Processing results...")
+      await new Promise((resolve) => setTimeout(resolve, 400))
+
       if (response.ok) {
         const data = await response.json()
         setResults(data.results || [])
         setAnalysisComplete(true)
+        setCurrentStep("Analysis complete!")
+      } else {
+        throw new Error("Analysis failed")
       }
     } catch (error) {
       console.error("Analysis failed:", error)
-      // Mock results for demo
-      const mockResults: AnalysisResult[] = [
-        {
-          category: "performance",
-          severity: "high",
-          line: 3,
-          message: "Inefficient recursive algorithm detected",
-          suggestion: "Consider using dynamic programming or iterative approach",
-          code: "function fibonacci(n) {\n  const dp = [0, 1];\n  for (let i = 2; i <= n; i++) {\n    dp[i] = dp[i-1] + dp[i-2];\n  }\n  return dp[n];\n}",
-        },
-        {
+      setCurrentStep("Using fallback analysis...")
+
+      // Enhanced mock results based on selected analysis types
+      const mockResults: AnalysisResult[] = []
+
+      if (selectedAnalysis.includes("bugs")) {
+        mockResults.push({
           category: "bugs",
           severity: "medium",
           line: 2,
           message: "Missing input validation",
-          suggestion: "Add type checking and range validation for parameter n",
-        },
-        {
+          suggestion: "Add type checking and range validation for parameter n to prevent unexpected behavior",
+        })
+      }
+
+      if (selectedAnalysis.includes("performance")) {
+        mockResults.push({
+          category: "performance",
+          severity: "high",
+          line: 3,
+          message: "Inefficient recursive algorithm detected",
+          suggestion: "Consider using dynamic programming or iterative approach for better performance",
+          code: "function fibonacci(n) {\n  const dp = [0, 1];\n  for (let i = 2; i <= n; i++) {\n    dp[i] = dp[i-1] + dp[i-2];\n  }\n  return dp[n];\n}",
+        })
+      }
+
+      if (selectedAnalysis.includes("security")) {
+        mockResults.push({
           category: "security",
           severity: "low",
           line: 7,
           message: "Potential stack overflow vulnerability",
-          suggestion: "Implement maximum recursion depth limit",
-        },
-      ]
+          suggestion: "Implement maximum recursion depth limit to prevent stack overflow attacks",
+        })
+      }
+
+      if (selectedAnalysis.includes("style")) {
+        mockResults.push({
+          category: "style",
+          severity: "low",
+          line: 1,
+          message: "Function could benefit from JSDoc documentation",
+          suggestion: "Add JSDoc comments to describe function parameters and return value",
+        })
+      }
+
       setResults(mockResults)
       setAnalysisComplete(true)
+      setCurrentStep("Analysis complete!")
     } finally {
       setIsAnalyzing(false)
     }
@@ -195,6 +231,13 @@ export default function EditorPage() {
     const type = analysisTypes.find((t) => t.id === category)
     if (!type) return <Bug className="w-4 h-4" />
     return <type.icon className={`w-4 h-4 ${type.color}`} />
+  }
+
+  const getAnalysisTime = () => {
+    if (!analysisStartTime) return ""
+    const now = new Date()
+    const diff = Math.round((now.getTime() - analysisStartTime.getTime()) / 1000)
+    return `${diff}s`
   }
 
   return (
@@ -224,14 +267,14 @@ export default function EditorPage() {
       </nav>
 
       <div className="max-w-7xl mx-auto p-6">
-        <div className="grid lg:grid-cols-2 gap-6 h-[calc(100vh-120px)]">
-          {/* Code Editor Panel */}
-          <Card className="bg-gray-800/50 border-gray-700/50 flex flex-col">
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Code Input Panel */}
+          <Card className="bg-gray-800/50 border-gray-700/50">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center space-x-2">
                   <Code2 className="w-5 h-5 text-purple-400" />
-                  <span>Code Editor</span>
+                  <span>Code Input</span>
                 </CardTitle>
                 <div className="flex items-center space-x-2">
                   <Select value={language} onValueChange={handleLanguageChange}>
@@ -250,98 +293,126 @@ export default function EditorPage() {
               </div>
 
               {/* Analysis Type Selection */}
-              <div className="flex flex-wrap gap-2 mt-4">
-                {analysisTypes.map((type) => (
-                  <Button
-                    key={type.id}
-                    variant={selectedAnalysis.includes(type.id) ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => toggleAnalysisType(type.id)}
-                    className={`${
-                      selectedAnalysis.includes(type.id)
-                        ? "bg-purple-600 hover:bg-purple-700"
-                        : "border-gray-600 hover:bg-gray-700"
-                    }`}
-                  >
-                    <type.icon className={`w-4 h-4 mr-2 ${type.color}`} />
-                    {type.label}
-                  </Button>
-                ))}
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-gray-300">Select Analysis Types:</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {analysisTypes.map((type) => (
+                    <Button
+                      key={type.id}
+                      variant={selectedAnalysis.includes(type.id) ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => toggleAnalysisType(type.id)}
+                      className={`justify-start h-auto p-3 ${
+                        selectedAnalysis.includes(type.id)
+                          ? "bg-purple-600 hover:bg-purple-700 border-purple-500"
+                          : "border-gray-600 hover:bg-gray-700 bg-transparent"
+                      }`}
+                    >
+                      <div className="flex flex-col items-start space-y-1">
+                        <div className="flex items-center space-x-2">
+                          <type.icon className={`w-4 h-4 ${type.color}`} />
+                          <span className="text-sm font-medium">{type.label}</span>
+                        </div>
+                        <span className="text-xs text-gray-400">{type.description}</span>
+                      </div>
+                    </Button>
+                  ))}
+                </div>
               </div>
             </CardHeader>
 
-            <CardContent className="flex-1 p-0">
-              <div className="h-full border border-gray-700 rounded-lg overflow-hidden">
-                <Editor
-                  height="100%"
-                  language={language}
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Paste your code here:</label>
+                <Textarea
                   value={code}
-                  onChange={(value) => setCode(value || "")}
-                  theme="vs-dark"
-                  options={{
-                    minimap: { enabled: false },
-                    fontSize: 14,
-                    lineNumbers: "on",
-                    roundedSelection: false,
-                    scrollBeyondLastLine: false,
-                    automaticLayout: true,
-                    padding: { top: 16, bottom: 16 },
-                  }}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="Enter your code here..."
+                  className="min-h-[300px] max-h-[400px] bg-gray-900 border-gray-600 text-gray-100 font-mono text-sm resize-none"
                 />
               </div>
 
-              <div className="p-4 border-t border-gray-700">
+              <div className="flex items-center justify-between">
+                <div className="text-xs text-gray-400">
+                  {code.length} characters • {code.split("\n").length} lines
+                </div>
                 <Button
                   onClick={analyzeCode}
-                  disabled={isAnalyzing || !code.trim()}
-                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                  disabled={isAnalyzing || !code.trim() || selectedAnalysis.length === 0}
+                  className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:opacity-50"
                 >
                   {isAnalyzing ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Analyzing Code...
+                      Analyzing...
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      Analyze Code
+                      <Send className="w-4 h-4 mr-2" />
+                      Start Analysis
                     </>
                   )}
                 </Button>
               </div>
+
+              {selectedAnalysis.length === 0 && (
+                <div className="text-sm text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+                  Please select at least one analysis type to proceed.
+                </div>
+              )}
             </CardContent>
           </Card>
 
           {/* Results Panel */}
-          <Card className="bg-gray-800/50 border-gray-700/50 flex flex-col">
+          <Card className="bg-gray-800/50 border-gray-700/50">
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Target className="w-5 h-5 text-green-400" />
-                <span>Analysis Results</span>
-                {results.length > 0 && (
-                  <Badge variant="secondary" className="ml-2">
-                    {results.length} issues found
-                  </Badge>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center space-x-2">
+                  <Target className="w-5 h-5 text-green-400" />
+                  <span>Analysis Results</span>
+                  {results.length > 0 && (
+                    <Badge variant="secondary" className="ml-2">
+                      {results.length} issues found
+                    </Badge>
+                  )}
+                </CardTitle>
+                {analysisComplete && (
+                  <div className="flex items-center space-x-2 text-sm text-gray-400">
+                    <Clock className="w-4 h-4" />
+                    <span>{getAnalysisTime()}</span>
+                  </div>
                 )}
-              </CardTitle>
+              </div>
             </CardHeader>
 
-            <CardContent className="flex-1 overflow-hidden">
+            <CardContent className="space-y-4">
               <AnimatePresence mode="wait">
                 {!analysisComplete && !isAnalyzing && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="flex flex-col items-center justify-center h-full text-center"
+                    className="flex flex-col items-center justify-center py-12 text-center"
                   >
                     <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mb-4">
-                      <Play className="w-8 h-8 text-purple-400" />
+                      <FileText className="w-8 h-8 text-purple-400" />
                     </div>
-                    <h3 className="text-xl font-semibold mb-2">Ready to Analyze</h3>
+                    <h3 className="text-xl font-semibold mb-2">Ready for Analysis</h3>
                     <p className="text-gray-400 max-w-sm">
-                      Paste your code and click "Analyze Code" to get AI-powered insights and suggestions.
+                      Select your analysis types, paste your code, and click "Start Analysis" to get AI-powered
+                      insights.
                     </p>
+                    <div className="mt-6 space-y-2">
+                      <div className="text-sm text-gray-500">Supported features:</div>
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        {analysisTypes.map((type) => (
+                          <Badge key={type.id} variant="outline" className="text-xs">
+                            <type.icon className={`w-3 h-3 mr-1 ${type.color}`} />
+                            {type.label}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
                   </motion.div>
                 )}
 
@@ -350,16 +421,28 @@ export default function EditorPage() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="flex flex-col items-center justify-center h-full text-center"
+                    className="flex flex-col items-center justify-center py-12 text-center"
                   >
                     <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mb-4">
                       <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
                     </div>
                     <h3 className="text-xl font-semibold mb-2">Analyzing Your Code</h3>
-                    <p className="text-gray-400 max-w-sm">
-                      Our AI is reviewing your code for bugs, performance issues, security vulnerabilities, and style
-                      improvements...
+                    <p className="text-gray-400 max-w-sm mb-4">
+                      Our AI is reviewing your code for the selected analysis types...
                     </p>
+                    <div className="w-full max-w-xs">
+                      <div className="bg-gray-700 rounded-full h-2 mb-2">
+                        <div
+                          className="bg-gradient-to-r from-purple-600 to-blue-600 h-2 rounded-full animate-pulse"
+                          style={{ width: "70%" }}
+                        ></div>
+                      </div>
+                      <div className="text-sm text-gray-400">{currentStep}</div>
+                    </div>
+                    <div className="mt-4 text-xs text-gray-500">
+                      Analyzing {selectedAnalysis.length} type{selectedAnalysis.length > 1 ? "s" : ""}:{" "}
+                      {selectedAnalysis.join(", ")}
+                    </div>
                   </motion.div>
                 )}
 
@@ -367,15 +450,16 @@ export default function EditorPage() {
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="flex flex-col items-center justify-center h-full text-center"
+                    className="flex flex-col items-center justify-center py-12 text-center"
                   >
                     <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mb-4">
                       <CheckCircle className="w-8 h-8 text-green-400" />
                     </div>
-                    <h3 className="text-xl font-semibold mb-2">Great Code!</h3>
+                    <h3 className="text-xl font-semibold mb-2">Excellent Code!</h3>
                     <p className="text-gray-400 max-w-sm">
-                      No issues found in your code. It follows best practices for the selected analysis types.
+                      No issues found in your code for the selected analysis types. Your code follows best practices!
                     </p>
+                    <div className="mt-4 text-sm text-gray-500">Analyzed: {selectedAnalysis.join(", ")}</div>
                   </motion.div>
                 )}
 
@@ -383,7 +467,7 @@ export default function EditorPage() {
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="h-full overflow-y-auto space-y-4"
+                    className="space-y-4 max-h-[500px] overflow-y-auto"
                   >
                     {results.map((result, index) => (
                       <motion.div
@@ -415,6 +499,9 @@ export default function EditorPage() {
                                     }`}
                                   >
                                     {result.severity.toUpperCase()}
+                                  </Badge>
+                                  <Badge variant="outline" className="text-xs capitalize">
+                                    {result.category}
                                   </Badge>
                                 </div>
                                 <h4 className="font-semibold text-white mb-2">{result.message}</h4>
